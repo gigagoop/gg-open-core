@@ -1,0 +1,15 @@
+name: gg-open-core
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - matplotlib
+  - scipy
+  - scikit-image
+  - pip:
+      - pyzmq
+      - opencv-python-headless
+      - pywavefront
+      - imgui
+      - moderngl
+      - moderngl-window
