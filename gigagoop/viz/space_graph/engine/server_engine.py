@@ -91,7 +91,8 @@ class ServerEngine(BaseEngine):
         elif message_type == 'add_xy_grid':
             M_OBJ_WCS = Transform(request['M_OBJ_WCS'])
             rgba = np.array(request['rgba']).astype(np.float32)
-            node = Grid(engine, M_OBJ_WCS, rgba)
+            size = int(request['size'])
+            node = Grid(engine, M_OBJ_WCS, rgba, n_lines=size)
             self.add_node(node)
 
         elif message_type == 'add_image':

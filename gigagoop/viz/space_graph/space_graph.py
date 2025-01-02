@@ -123,7 +123,8 @@ class SpaceGraph:
                  show_grid=True,
                  window_params: Optional[WindowParams] = None,
                  cam: Optional[PinholeCamera] = None,
-                 scale_wcs=1.0):
+                 scale_wcs=1.0,
+                 grid_size=10):
 
         self._port = get_open_port()
         self._start_server_non_blocking(window_params, cam)
@@ -133,7 +134,7 @@ class SpaceGraph:
             self.add_cframe(scale=scale_wcs)
 
         if show_grid:
-            self.add_xy_grid()
+            self.add_xy_grid(size=grid_size)
 
     # ==================================================================================================================
     # UTILITY
@@ -231,16 +232,21 @@ class SpaceGraph:
     def add_xy_grid(self,
                     M_OBJ_WCS: Optional[Transform] = None,
                     color: str = 'xkcd:medium gray',
-                    alpha: float = 1.0) -> None:
+                    alpha: float = 1.0,
+                    size: int = 10) -> None:
 
         if M_OBJ_WCS is None:
             M_OBJ_WCS = Transform()    # identity
 
         rgba = to_rgba(color, alpha)
 
+        size = int(size)
+        size = max(size, 0)
+
         message = {'MessageType': 'add_xy_grid',
                    'M_OBJ_WCS': M_OBJ_WCS.matrix,
-                   'rgba': np.array(rgba)}
+                   'rgba': np.array(rgba),
+                   'size': size}
 
         self._send_message(message)
 

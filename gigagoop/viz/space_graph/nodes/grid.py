@@ -13,9 +13,12 @@ if TYPE_CHECKING:
 
 
 class Grid(Node):
-    def __init__(self, engine: BaseEngine, M_OBJ_WCS: Transform, rgba: np.ndarray):
+    def __init__(self, engine: BaseEngine, M_OBJ_WCS: Transform, rgba: np.ndarray, n_lines: int):
         assert len(rgba) == 4
         assert rgba.dtype == np.float32
+
+        assert isinstance(n_lines, int)
+        self.n_lines = n_lines
 
         super().__init__(engine, M_OBJ_WCS, shader='grid')
 
@@ -28,7 +31,7 @@ class Grid(Node):
     def get_vbo(self):
         vertices = []
 
-        n_lines = 10
+        n_lines = self.n_lines
 
         for x in range(-n_lines, n_lines + 1):
             vertices.extend([(x, -n_lines, 0), (x, n_lines, 0)])
