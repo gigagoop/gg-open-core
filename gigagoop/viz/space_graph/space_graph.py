@@ -311,15 +311,6 @@ class SpaceGraph:
 
         self._send_message(message)
 
-    def add_iphone(self, M_CAM_WCS: Optional[Transform] = None,
-                   scale: float = 1.0,
-                   center_on: str = 'main-cam',
-                   color: str = 'xkcd:red',
-                   orientation: str = 'portrait'):
-        mesh = build_iphone_mesh(M_CAM_WCS, scale, center_on, color, orientation)
-
-        self.mesh(mesh)
-
     # ==================================================================================================================
     # PLOTTING (SCATTER, PLOT, MESH, ...)
     # -----------------------------------
@@ -419,6 +410,37 @@ class SpaceGraph:
                    'rgba': rgba}
 
         self._send_message(message)
+
+    def wireframe(self,
+                  vertices: ArrayLike,
+                  faces: ArrayLike,
+                  vertex_color: str = 'white',
+                  vertex_size: float = 1.0,
+                  mesh_color: str = 'white',
+                  mesh_alpha: float = 0.5,
+                  edge_color: str = 'white',
+                  edge_alpha: float = 1.0):
+
+        vertices = check_position(vertices)
+        faces = check_position(faces)
+
+        self.scatter(vertices, color=vertex_color, size=vertex_size)
+
+        self.mesh(vertices, faces, color=mesh_color, alpha=mesh_alpha)
+
+        # Find all the unique edges so we don't plot a bunch of lines that are duplicates
+        edges = np.vstack([faces[:, [0, 1]],      # edge from vertex 0 to vertex 1
+                           faces[:, [1, 2]],      # edge from vertex 1 to vertex 2
+                           faces[:, [2, 0]]])     # edge from vertex 2 to vertex 0
+
+        sorted_edges = np.sort(edges, axis=1)
+        unique_edges = np.unique(sorted_edges, axis=0)
+
+        edges_as_lines = np.array([(vertices[start], vertices[end])
+                                   for start, end in unique_edges])
+        edges_as_lines = edges_as_lines.reshape(-1, 3)
+
+        self.plot(edges_as_lines, lines=True, color=edge_color, alpha=edge_alpha)
 
     # ------------------------------------------------------------------------------------------------------------------
     def _send_message(self, message):
