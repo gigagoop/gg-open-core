@@ -207,7 +207,9 @@ def unitsratio(from_unit: str, to_unit: str) -> float:
                    ('ms', 's'): 0.001,
                    ('s', 'ms'): 1000,
                    ('ft', 'in'): 12,
-                   ('in', 'ft'): 1/12}
+                   ('in', 'ft'): 1/12,
+                   ('mph', 'm/s'): 0.44704,
+                   ('m/s', 'mph'): 2.2369362921}
 
     assert (from_unit, to_unit) in conversions, f'({from_unit=}, {to_unit=}) should exist in conversions'
 
