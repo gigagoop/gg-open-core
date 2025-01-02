@@ -31,7 +31,7 @@ conda env create -f environment.yml
 or instead, add those dependencies to your own environment.
 
 # Getting Started
-Start by running [ex_overview.py](gigagoop/viz/space_graph/_examples/ex_overview.py) to get an idea of how to use `SpaceGraph` - you'll get something like this:
+Start by running [ex_overview.py](examples/space_graph/ex_overview.py) to get an idea of how to use `SpaceGraph` - you'll get something like this:
 ![](./docs/viz/ex_overview.png)
 
 # License
