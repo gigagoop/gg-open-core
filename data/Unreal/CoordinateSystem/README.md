@@ -1,0 +1,2 @@
+# Overview
+These `*.uasset` files represent a nice coordinate system that you can place inside an Unreal Engine project to play around with. Since `SpaceGraph` implements the same position and orientation conventions as Unreal Engine, it is often convenient to have a coordinate system inside Unreal Engine to mess around with something like rotating about the Z axis and seeing which way it rotates.
