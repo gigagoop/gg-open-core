@@ -448,6 +448,30 @@ class SpaceGraph:
 
         self.plot(edges_as_lines, lines=True, color=edge_color, alpha=edge_alpha)
 
+    def normals(self,
+                vertices: ArrayLike,
+                faces: ArrayLike,
+                normals: ArrayLike,
+                scale: float = 1.0,
+                color: str = 'white',
+                alpha: float = 0.1):
+
+        vertices = check_position(vertices)
+        faces = check_position(faces)
+        normals = check_position(normals)
+
+        lines = []
+        for inds, normal in zip(faces, normals):
+            tri_verts = vertices[inds]
+
+            pos_wcs = np.mean(tri_verts, axis=0)
+            lines.append(pos_wcs)
+            lines.append(pos_wcs + scale * normal)
+
+        lines = np.vstack(lines)
+
+        self.plot(lines, lines=True, color=color, alpha=alpha)
+
     # ------------------------------------------------------------------------------------------------------------------
     def _send_message(self, message):
         assert 'MessageType' in message

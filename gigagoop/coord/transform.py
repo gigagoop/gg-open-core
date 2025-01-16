@@ -7,9 +7,11 @@ from textwrap import dedent
 from typing import Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
 from gigagoop.types import ArrayLike
+from gigagoop.viz.space_graph.space_graph import check_position
 
 log = logging.getLogger(__name__)
 
@@ -214,7 +216,7 @@ class Transform:
 
         return transform
 
-    def to_unreal(self) -> Tuple[np.ndarray, np.ndarray]:
+    def to_unreal(self) -> Tuple[NDArray, NDArray]:
 
         R0 = self.rotation
 
@@ -266,7 +268,7 @@ class Transform:
         return M_CAM2_CAM1
 
     @property
-    def matrix(self) -> np.ndarray:
+    def matrix(self) -> NDArray:
         """Return the underlying 4x4 matrix that makes up the transform."""
         return self._matrix
 
@@ -298,22 +300,22 @@ class Transform:
         return T
 
     @property
-    def x_axis(self) -> np.ndarray:
+    def x_axis(self) -> NDArray:
         """Return the x-axis of the frame."""
         return self._matrix[:3, 0]
 
     @property
-    def y_axis(self) -> np.ndarray:
+    def y_axis(self) -> NDArray:
         """Return the y-axis of the frame."""
         return self._matrix[:3, 1]
 
     @property
-    def z_axis(self) -> np.ndarray:
+    def z_axis(self) -> NDArray:
         """Return the z-axis of the frame."""
         return self._matrix[:3, 2]
 
     @property
-    def origin(self) -> np.ndarray:
+    def origin(self) -> NDArray:
         """Return the origin of the frame."""
         return self._matrix[:3, 3]
 
@@ -324,7 +326,7 @@ class Transform:
         self._matrix[:3, 3] = value
 
     @property
-    def rotation(self) -> np.ndarray:
+    def rotation(self) -> NDArray:
         """Return the rotational component (a 3x3 matrix) from the transform. """
         return self._matrix[:3, :3]
 
@@ -335,18 +337,18 @@ class Transform:
         """Return True when both transforms are equal."""
         return np.all(np.isclose(self.matrix, other.matrix))
 
-    def __call__(self, points: ArrayLike) -> np.ndarray:
+    def __call__(self, points: ArrayLike) -> NDArray:
         """Map points from one frame to another."""
         return self._transform(points)
 
-    def __mul__(self, other: ArrayLike | Transform) -> np.ndarray | Transform:
+    def __mul__(self, other: ArrayLike | Transform) -> NDArray | Transform:
         """Map points from one frame to another, or apply chaining."""
         if isinstance(other, Transform):
             return self._chain(other)
         else:
             return self._transform(other)
 
-    def __matmul__(self, other: ArrayLike | Transform) -> np.ndarray | Transform:
+    def __matmul__(self, other: ArrayLike | Transform) -> NDArray | Transform:
         """Map points from one frame to another, or apply chaining."""
         return self.__mul__(other)
 
@@ -378,6 +380,18 @@ class Transform:
         # do a right multiply instead.
 
         return points @ self.rotation.T + self.origin[np.newaxis, :]
+
+    def apply_to_vectors(self, vectors: ArrayLike) -> NDArray:
+        """
+        Map vectors from one coordinate frame to another.
+        """
+        R = self.rotation
+        vectors = check_position(vectors)
+
+        new_vectors = vectors @ R.T
+        assert new_vectors.shape == vectors.shape
+
+        return new_vectors
 
 
 def Translate(dx: float = 0.0, dy: float = 0.0, dz: float = 0.0) -> Transform:
