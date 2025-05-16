@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from gigagoop.types import ArrayLike
+from gigagoop.typing import ArrayLike
 
 
 def angle_between(v1: ArrayLike, v2: ArrayLike) -> float:

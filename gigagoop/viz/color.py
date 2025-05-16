@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib.colors import to_rgba
 import skimage
 
-from gigagoop.types import ArrayLike
+from gigagoop.typing import ArrayLike
 
 
 def false_color(input_colors: ArrayLike, ref_color: str | ArrayLike, alpha: Optional[float] = 1):

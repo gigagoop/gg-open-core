@@ -7,7 +7,7 @@ import numpy as np
 import moderngl as mgl
 
 from gigagoop.coord import Transform
-from gigagoop.types import PathLike
+from gigagoop.typing import PathLike
 
 if TYPE_CHECKING:
     from ..engine import BaseEngine

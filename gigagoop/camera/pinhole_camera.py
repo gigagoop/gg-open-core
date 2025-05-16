@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 import cv2
 
 from gigagoop.coord import Transform
-from gigagoop.types import ArrayLike
+from gigagoop.typing import ArrayLike
 
 log = logging.getLogger(__file__)
 

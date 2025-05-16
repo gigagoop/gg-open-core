@@ -12,7 +12,7 @@ from matplotlib.colors import to_rgba
 import zmq
 
 from gigagoop.coord import Transform, Scale, Translate
-from gigagoop.types import ArrayLike, PathLike
+from gigagoop.typing import ArrayLike, PathLike
 from gigagoop.viz.color import get_vertex_rgba
 from gigagoop.camera import PinholeCamera
 
@@ -183,6 +183,9 @@ class SpaceGraph:
         while True:
             time.sleep(1)
 
+            if not self._process.is_alive():
+                break
+
     def close(self):
         # TODO - trigger a clean termination, this is a hack...
         self._process.terminate()
@@ -271,6 +274,32 @@ class SpaceGraph:
                    'M_OBJ_WCS': M_OBJ_WCS.matrix,
                    'rgba': np.array(rgba),
                    'size': size}
+
+        self._send_message(message)
+
+    def add_arrow(self,
+                  origin: ArrayLike,
+                  direction: ArrayLike,
+                  width: float = 0.5,
+                  color: str | ArrayLike = 'xkcd:sky blue',
+                  alpha: float = 1.0):
+
+        origin = check_position(origin)
+        direction = check_position(direction)
+        width = float(width)
+        rgba = get_vertex_rgba(origin, color, alpha)
+
+        assert origin.shape == direction.shape
+        assert width > np.finfo(np.float32).eps
+
+        lens = np.linalg.norm(direction, axis=1)
+        assert np.max(lens) > np.finfo(np.float32).eps, 'direction vectors should have a direction ;-P'
+
+        message = {'MessageType': 'add_arrow',
+                   'origin': origin,
+                   'direction': direction,
+                   'width': width,
+                   'rgba': rgba}
 
         self._send_message(message)
 
@@ -417,9 +446,67 @@ class SpaceGraph:
 
         self._send_message(message)
 
+    def lit_mesh(self,
+                 vertices: ArrayLike,
+                 faces: ArrayLike,
+                 normals: ArrayLike,
+                 color: str | ArrayLike = 'white',
+                 alpha: float = None,
+                 light_pos: Optional[ArrayLike] = None,
+                 light_color: Optional[ArrayLike] = None,
+                 light_intensity: float = 1.0,
+                 ambient_light: Optional[ArrayLike] = None):
+
+        if light_pos is None:
+            light_pos = [0, 0, 10]
+
+        if light_color is None:
+            light_color = [1, 1, 1]
+
+        if ambient_light is None:
+            ambient_light = [0.1, 0.1, 0.1]
+
+        vertices = check_position(vertices)
+        faces = check_position(faces)
+        normals = check_position(normals)
+
+        assert len(faces) == len(normals)
+
+        # The `vertices` input is indexed from `[0, num_verts-1]`, so make sure faces is bounded correctly such that it
+        # indexes into `vertices`
+        num_verts = vertices.shape[0]
+
+        assert np.min(faces) >= 0 and np.max(faces) <= num_verts - 1, \
+            'faces is out of bounds, it should index into `vertices`'
+
+        light_pos = np.array(light_pos)
+        light_color = np.array(light_color)
+        ambient_light = np.array(ambient_light)
+
+        assert len(light_pos) == 3
+        assert len(light_color) == 3
+        assert len(ambient_light) == 3
+
+        # We can use `get_vertex_rgba` to form the color of each triangle (since we assume (at least for now) that the
+        # color of each triangle is uniform)
+        rgba = get_vertex_rgba(faces, color, alpha)
+
+        # Pack up the message and let it rip
+        message = {'MessageType': 'lit_mesh',
+                   'vertices': vertices,
+                   'faces': faces,
+                   'normals': normals,
+                   'rgba': rgba,
+                   'light_pos': light_pos,
+                   'light_color': light_color,
+                   'light_intensity': light_intensity,
+                   'ambient_light': ambient_light}
+
+        self._send_message(message)
+
     def wireframe(self,
                   vertices: ArrayLike,
-                  faces: ArrayLike,
+                  faces: Optional[ArrayLike] = None,
                   vertex_color: str = 'white',
                   vertex_size: float = 1.0,
                   mesh_color: str = 'white',
@@ -428,6 +515,10 @@ class SpaceGraph:
                   edge_alpha: float = 1.0):
 
         vertices = check_position(vertices)
+
+        if faces is None:
+            faces = np.arange(len(vertices)).reshape(-1, 3)
+
         faces = check_position(faces)
 
         self.scatter(vertices, color=vertex_color, size=vertex_size)
@@ -448,25 +539,24 @@ class SpaceGraph:
 
         self.plot(edges_as_lines, lines=True, color=edge_color, alpha=edge_alpha)
 
-    def normals(self,
-                vertices: ArrayLike,
-                faces: ArrayLike,
-                normals: ArrayLike,
+    def vectors(self,
+                vectors: ArrayLike,
+                positions: Optional[ArrayLike] = None,
                 scale: float = 1.0,
                 color: str = 'white',
-                alpha: float = 0.1):
+                alpha: float = 1.0):
 
-        vertices = check_position(vertices)
-        faces = check_position(faces)
-        normals = check_position(normals)
+        vectors = check_position(vectors)
+        if positions is None:
+            positions = np.zeros_like(vectors)
+
+        positions = check_position(positions)
+        assert positions.shape == positions.shape
 
         lines = []
-        for inds, normal in zip(faces, normals):
-            tri_verts = vertices[inds]
-
-            pos_wcs = np.mean(tri_verts, axis=0)
-            lines.append(pos_wcs)
-            lines.append(pos_wcs + scale * normal)
+        for pos, vector in zip(positions, vectors):
+            lines.append(pos)
+            lines.append(pos + scale * vector)
 
         lines = np.vstack(lines)
 

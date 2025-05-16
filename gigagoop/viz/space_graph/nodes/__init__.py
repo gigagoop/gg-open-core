@@ -12,3 +12,5 @@ from .unreal_mesh import UnrealMesh
 from .material_mesh import MaterialMesh
 from .cylinder import Cylinder
 from .camera import Camera
+from .arrow import Arrow
+from .lit_mesh import LitMesh

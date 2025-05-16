@@ -10,6 +10,9 @@ class FpsTracker:
         self._history = np.nan * np.ones(self.length)
 
     def update(self, delta_time: float):
+        if delta_time < 1e-8:
+            return
+
         fps = 1 / delta_time
         self._history[self._frame_index % self.length] = fps
         self._frame_index += 1

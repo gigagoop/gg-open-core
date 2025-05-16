@@ -44,6 +44,10 @@ class BaseEngine:
         # Set the background colors
         self._background_color = to_rgba(background_color)
 
+        # To mimic Unreal Engine, we want to move the camera only if the right mouse button is pressed. To do this, we
+        # need to track if the button is being pressed
+        self._mouse_button_pressed = None
+
         # Get the window class to be used
         window_cls = mglw.get_window_cls(window='moderngl_window.context.pyglet.Window')
 
@@ -110,10 +114,6 @@ class BaseEngine:
 
         # The scene contains all the nodes to render
         self._scene: List[Node] = []
-
-        # To mimic Unreal Engine, we want to move the camera only if the right mouse button is pressed. To do this, we
-        # need to track if the button is being pressed
-        self._mouse_button_pressed = None
 
     @property
     def ctx(self) -> mgl.Context:

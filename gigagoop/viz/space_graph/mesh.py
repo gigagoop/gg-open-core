@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 import pywavefront
 import cv2
 
-from gigagoop.types import ArrayLike, PathLike
+from gigagoop.typing import ArrayLike, PathLike
 from gigagoop.coord import get_world_coordinate_system
 from gigagoop.viz.color import get_vertex_rgba
 

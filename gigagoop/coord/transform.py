@@ -10,8 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
-from gigagoop.types import ArrayLike
-from gigagoop.viz.space_graph.space_graph import check_position
+from gigagoop.typing import ArrayLike
 
 log = logging.getLogger(__name__)
 
@@ -381,17 +380,37 @@ class Transform:
 
         return points @ self.rotation.T + self.origin[np.newaxis, :]
 
-    def apply_to_vectors(self, vectors: ArrayLike) -> NDArray:
+    def map_vectors(self, vectors: ArrayLike) -> NDArray:
         """
         Map vectors from one coordinate frame to another.
         """
         R = self.rotation
-        vectors = check_position(vectors)
 
         new_vectors = vectors @ R.T
         assert new_vectors.shape == vectors.shape
 
         return new_vectors
+
+    @property
+    def is_valid(self, eps=1e-9) -> bool:
+        """
+        Check if the coordinate system is valid.
+        """
+        # Check if the axes are unit vectors
+        for axis in (self.x_axis, self.y_axis, self.z_axis):
+            if not np.isclose(np.linalg.norm(axis), 1, atol=eps):
+                return False
+
+        R = self.rotation
+        # Check orthogonality: R @ R.T should be the identity matrix
+        if not np.allclose(R @ R.T, np.eye(3), atol=eps):
+            return False
+
+        # Check that the determinant is 1 for a proper right-handed rotation matrix
+        if not np.isclose(np.linalg.det(R), 1.0, atol=eps):
+            return False
+
+        return True
 
 
 def Translate(dx: float = 0.0, dy: float = 0.0, dz: float = 0.0) -> Transform:

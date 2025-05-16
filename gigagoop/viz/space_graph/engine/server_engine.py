@@ -8,7 +8,7 @@ import zmq
 from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
-from ..nodes import Grid, CFrame, Scatter, Plot, Mesh, Sphere, Image, UnrealMesh
+from ..nodes import Grid, CFrame, Scatter, Plot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -115,6 +115,14 @@ class ServerEngine(BaseEngine):
             node = Sphere(engine, M_OBJ_WCS, rgba, scale=request['size'])
             self.add_node(node)
 
+        elif message_type == 'add_arrow':
+            origin = np.array(request['origin']).astype(np.float32)
+            direction = np.array(request['direction']).astype(np.float32)
+            width = np.array(request['width']).astype(np.float32)
+            rgba = np.array(request['rgba']).astype(np.float32)
+            node = Arrow(engine, origin, direction, width, rgba)
+            self.add_node(node)
+
         elif message_type == 'scatter':
             position = np.array(request['position']).astype(np.float32)
             rgba = np.array(request['rgba']).astype(np.float32)
@@ -134,6 +142,19 @@ class ServerEngine(BaseEngine):
             faces = np.array(request['faces']).astype(np.int32)
             rgba = np.array(request['rgba']).astype(np.float32)
             node = Mesh(engine, vertices, faces, rgba)
+            self.add_node(node)
+
+        elif message_type == 'lit_mesh':
+            node = LitMesh(engine=self,
+                           vertices=np.array(request['vertices']).astype(np.float32),
+                           faces=np.array(request['faces']).astype(np.int32),
+                           normals=np.array(request['normals']).astype(np.float32),
+                           rgba=np.array(request['rgba']).astype(np.float32),
+                           light_pos=np.array(request['light_pos']).astype(np.float32),
+                           light_color=np.array(request['light_color']).astype(np.float32),
+                           light_intensity=float(request['light_intensity']),
+                           ambient_light=np.array(request['ambient_light']).astype(np.float32))
+
             self.add_node(node)
 
         else:

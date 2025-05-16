@@ -4,10 +4,11 @@ import codecs
 from typing import Tuple, Optional, Dict
 
 import numpy as np
+from numpy.typing import NDArray
 import pywavefront
 import cv2
 
-from gigagoop.types import PathLike
+from gigagoop.typing import PathLike
 from gigagoop.coord import Transform, Scale, Translate, RotateY, RotateZ
 from gigagoop.viz.color import get_vertex_rgba
 
@@ -262,6 +263,45 @@ def merge_mesh(sub_vertices, sub_faces, sub_colors):
     merge_vertices = np.vstack(merge_vertices)
     merge_faces = np.vstack(merge_faces)
     merge_rgba = np.vstack(merge_rgba)
+
+    return merge_vertices, merge_faces, merge_rgba
+
+
+def build_arrow_mesh() -> Tuple[NDArray, NDArray, None]:
+    cylinder_mesh = UnrealMesh(__obj_dir__ / 'cylinder.obj')
+    cone_mesh = UnrealMesh(__obj_dir__ / 'cone.obj')
+
+    # Build the x-axis
+    M_XAXIS_CFRAME = Scale(sx=3, sy=1, sz=1)
+    M_XARROW_XAXIS = Translate(dx=1, dy=0, dz=0) * Scale(sx=0.25, sy=1, sz=1)
+
+    xaxis_vertices_cframe = M_XAXIS_CFRAME(cylinder_mesh.vertices)
+
+    xarrow_vertices_cframe = (M_XAXIS_CFRAME * M_XARROW_XAXIS)(cone_mesh.vertices)
+
+    sub_vertices = [xaxis_vertices_cframe,
+                    xarrow_vertices_cframe]
+
+    sub_faces = [cylinder_mesh.faces,
+                 cone_mesh.faces]
+
+    x_edge_color = 'red'
+    x_tip_color = 'red'
+
+    sub_colors = [x_edge_color,
+                  x_tip_color]
+
+    merge_vertices, merge_faces, merge_rgba = merge_mesh(sub_vertices, sub_faces, sub_colors)
+
+    s = np.max(np.linalg.norm(merge_vertices, axis=1))
+    merge_vertices = merge_vertices / s
+
+    # scale = np.linalg.norm(end_pos - start_pos)
+    # merge_vertices_cframe = merge_vertices_cframe * scale
+    #
+    # # Transform from the local frame coordinate system to the world
+    # M_CFRAME_WCS = Transform.from_origin(origin=start_pos)
+    # merge_vertices_cframe = M_CFRAME_WCS(merge_vertices)
 
     return merge_vertices, merge_faces, merge_rgba
 

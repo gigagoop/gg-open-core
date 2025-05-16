@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from gigagoop.coord import Transform
-from gigagoop.types import ArrayLike
+from gigagoop.typing import ArrayLike
 from gigagoop.viz.color import get_vertex_rgba
 
 from .mesh import Mesh
