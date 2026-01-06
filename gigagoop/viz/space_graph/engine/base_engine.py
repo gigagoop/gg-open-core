@@ -215,6 +215,7 @@ class BaseEngine:
         imgui.begin('Stats', closable=True)
         imgui.text(f'{self._fps_tracker.fps:0.2f} FPS')
         imgui.text(f'{1/self._fps_tracker.fps*1000:0.2f} ms')
+        imgui.text(f'{self.camera.velocity:0.2f} (cam vel)')
         imgui.end()
 
         # ==============================================================================================================
@@ -312,6 +313,7 @@ class BaseEngine:
         # RESET
         if imgui.button('Reset', width=60, height=20):
             self._ui_set_default_camera_pose()
+            self.camera.velocity = 10
         imgui.end()
 
         # ==============================================================================================================
@@ -377,12 +379,21 @@ class BaseEngine:
         self._imgui.mouse_drag_event(x, y, dx, dy)
 
     def mouse_scroll_event(self, x_offset: int, y_offset: int):
+        """
+        On scroll: choose a coarse step of 1.0 when velocity > 1.0,
+        otherwise a fine step of 0.01.  Round to int only in the coarse region.
+        """
+        # Choose step: coarse int steps above 1.0, fine-grained below
+        coarse = self.camera.velocity > 1.0
+        step = 1.0 if coarse else 0.1
+
+        # Compute new velocity, clamped at the minimum step
         if y_offset > 0:
-            # Speed up the movement
-            self.camera.velocity += 1
+            new_v = self.camera.velocity + step
         else:
-            # Slow down the movement
-            self.camera.velocity = max(1, self.camera.velocity - 1)
+            new_v = max(step, self.camera.velocity - step)
+
+        self.camera.velocity = int(round(new_v)) if coarse else new_v
 
         self._imgui.mouse_scroll_event(x_offset, y_offset)
 

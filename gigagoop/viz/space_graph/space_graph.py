@@ -28,7 +28,8 @@ def _start_engine(port: int,
                   cam: Optional[PinholeCamera] = None):
     from .engine import ServerEngine
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('moderngl_window').setLevel(logging.WARNING)
 
     engine = ServerEngine(port, window_params, cam)
     engine.run()
@@ -455,7 +456,8 @@ class SpaceGraph:
                  light_pos: Optional[ArrayLike] = None,
                  light_color: Optional[ArrayLike] = None,
                  light_intensity: float = 1.0,
-                 ambient_light: Optional[ArrayLike] = None):
+                 ambient_light: Optional[ArrayLike] = None,
+                 face_colors: Optional[ArrayLike] = None):
 
         if light_pos is None:
             light_pos = [0, 0, 10]
@@ -470,7 +472,8 @@ class SpaceGraph:
         faces = check_position(faces)
         normals = check_position(normals)
 
-        assert len(faces) == len(normals)
+        num_faces = len(faces)
+        assert len(normals) == num_faces
 
         # The `vertices` input is indexed from `[0, num_verts-1]`, so make sure faces is bounded correctly such that it
         # indexes into `vertices`
@@ -489,7 +492,12 @@ class SpaceGraph:
 
         # We can use `get_vertex_rgba` to form the color of each triangle (since we assume (at least for now) that the
         # color of each triangle is uniform)
-        rgba = get_vertex_rgba(faces, color, alpha)
+        if face_colors is None:
+            rgba = get_vertex_rgba(faces, color, alpha)
+        else:
+            face_colors = np.array(face_colors).astype(np.float32)
+            assert face_colors.shape == (num_faces, 4)
+            rgba = face_colors
 
         # Pack up the message and let it rip
         message = {'MessageType': 'lit_mesh',

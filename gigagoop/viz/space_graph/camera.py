@@ -11,7 +11,7 @@ from gigagoop.camera import PinholeCamera
 
 class Camera:
     NEAR_PLANE = 0.01
-    FAR_PLANE = 100
+    FAR_PLANE = 1000
 
     def __init__(self, cam: PinholeCamera, keys: Optional[BaseKeys] = None, lock_height: bool = True):
 

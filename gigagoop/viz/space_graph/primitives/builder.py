@@ -20,35 +20,60 @@ __obj_dir__ = Path(__file__).parent
 def strip_bom(file: Path):
     """
     Unreal writes a Byte Order Mark (BOM) on each line that causes issues with pywavefront. Use this routine to remove
-    the bom each file.
+    the BOM from the file if present.
+
+    For installed builds (e.g. under Program Files) we avoid writing unless a change is actually needed, and we fail
+    gracefully if the file is not writable.
     """
     with open(file, 'rb') as f:
         content = f.read()
 
-    content = content.lstrip(codecs.BOM_UTF8)
+    # Remove BOM only if present
+    new_content = content.lstrip(codecs.BOM_UTF8)
 
-    with open(file, 'wb') as f:
-        f.write(content)
+    # If nothing changed, don't try to write (avoids needing write access)
+    if new_content == content:
+        return
+
+    try:
+        with open(file, 'wb') as f:
+            f.write(new_content)
+    except PermissionError as ex:
+        # In a read-only install location we just log and continue
+        log.warning('strip_bom: could not write %s (%s); continuing without modifying file', file, ex)
+
 
 
 def replace_g_with_o(file: Path):
     """
-    The unreal obj file also contains `g <mesh>` which is not supported by `pywavefront`. This changes the "g" to an
-    "o" to make pywavefront happy.
+    The unreal obj file also contains `g <mesh>` which is not supported by `pywavefront`. This changes the "g" to an "o"
+    to make pywavefront happy.
+
+    We only rewrite the file if any changes are actually needed.
     """
     with open(file, 'r') as input_file:
         lines = input_file.readlines()
 
     modified_lines = []
+    changed = False
+
     for line in lines:
         if line.startswith('g '):
-            modified_line = 'o ' + line[2:]
+            modified_lines.append('o ' + line[2:])
+            changed = True
         else:
-            modified_line = line
-        modified_lines.append(modified_line)
+            modified_lines.append(line)
 
-    with open(file, 'w') as output_file:
-        output_file.writelines(modified_lines)
+    # No 'g ' lines → nothing to do, don't touch the file
+    if not changed:
+        return
+
+    try:
+        with open(file, 'w') as output_file:
+            output_file.writelines(modified_lines)
+    except PermissionError as ex:
+        log.warning('replace_g_with_o: could not write %s (%s); continuing without modifying file', file, ex)
+
 
 
 class UnrealMesh:
