@@ -13,7 +13,12 @@ if TYPE_CHECKING:
 
 
 class Plot(Node):
-    def __init__(self, engine: BaseEngine, position: np.ndarray, rgba: np.ndarray, lines: bool):
+    def __init__(self,
+                 engine: BaseEngine,
+                 position: np.ndarray,
+                 rgba: np.ndarray,
+                 lines: bool,
+                 linewidth: float | None):
         M_OBJ_WCS = Transform()
 
         assert position.dtype == np.float32
@@ -26,6 +31,11 @@ class Plot(Node):
             self._render_mode = mgl.LINES
         else:
             self._render_mode = mgl.LINE_STRIP
+
+        if linewidth is not None:
+            linewidth = float(linewidth)
+            assert linewidth > 0
+        self._linewidth = linewidth
 
         super().__init__(engine, M_OBJ_WCS, shader='lines')
 
@@ -41,4 +51,12 @@ class Plot(Node):
         return vbo
 
     def _render(self):
+        ctx = self._engine.ctx
+        if self._linewidth is None:
+            self._vao.render(self._render_mode)
+            return
+
+        previous_width = ctx.line_width
+        ctx.line_width = self._linewidth
         self._vao.render(self._render_mode)
+        ctx.line_width = previous_width

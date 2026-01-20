@@ -72,6 +72,9 @@ def main():
     position = np.column_stack([x + 5, y - 5, z])
     sg.plot(position, color='red')
 
+    thick_position = np.column_stack([x + 2, y - 5, z])
+    sg.plot(thick_position, color='xkcd:cerulean', linewidth=5)
+
     # ---
     sg.mesh(vertices=[[10, -10, 0],
                       [10, 10, 0],

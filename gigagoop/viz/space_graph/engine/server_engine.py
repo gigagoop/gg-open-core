@@ -134,7 +134,10 @@ class ServerEngine(BaseEngine):
             position = np.array(request['position']).astype(np.float32)
             rgba = np.array(request['rgba']).astype(np.float32)
             lines = request['lines']
-            node = Plot(engine, position, rgba, lines)
+            linewidth = request.get('linewidth')
+            if linewidth is not None:
+                linewidth = float(linewidth)
+            node = Plot(engine, position, rgba, lines, linewidth)
             self.add_node(node)
 
         elif message_type == 'mesh':
