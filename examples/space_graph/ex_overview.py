@@ -4,15 +4,10 @@ This example demonstrates how to use the `SpaceGraph` interface.
 import logging
 
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 import skimage
 
 from gigagoop.viz import SpaceGraph
 from gigagoop.coord import GazeAt
-
-matplotlib.use('Qt5Agg')
-plt.ion()
 
 log = logging.getLogger('tour')
 

@@ -5,13 +5,8 @@ import logging
 from time import time
 
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 
 from gigagoop.viz import SpaceGraph
-
-matplotlib.use('Qt5Agg')
-plt.ion()
 
 log = logging.getLogger('tour')
 
