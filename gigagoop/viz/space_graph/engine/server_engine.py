@@ -8,7 +8,7 @@ import zmq
 from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
-from ..nodes import Grid, CFrame, Scatter, Plot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh
+from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -134,7 +134,16 @@ class ServerEngine(BaseEngine):
             position = np.array(request['position']).astype(np.float32)
             rgba = np.array(request['rgba']).astype(np.float32)
             lines = request['lines']
-            node = Plot(engine, position, rgba, lines)
+            linewidth = request.get('linewidth')
+            if linewidth is None:
+                node = Plot(engine, position, rgba, lines)
+                self.add_node(node)
+                return ret_message
+
+            try:
+                node = ThickPlot(engine, position, rgba, lines, float(linewidth))
+            except ValueError:
+                node = Plot(engine, position, rgba, lines)
             self.add_node(node)
 
         elif message_type == 'mesh':
