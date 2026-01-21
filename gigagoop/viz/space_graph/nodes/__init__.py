@@ -3,7 +3,7 @@ from .grid import Grid
 from .cframe import CFrame
 from .scatter import Scatter
 from .sized_scatter import SizedScatter
-from .plot import Plot
+from .plot import Plot, ThickPlot
 from .mesh import Mesh
 from .sphere import Sphere
 from .depth_mesh import DepthMesh

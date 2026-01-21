@@ -73,6 +73,13 @@ def main():
     sg.plot(position, color='red')
 
     # ---
+    x = np.cos(np.linspace(0, 4 * np.pi, n))
+    y = np.sin(np.linspace(0, 4 * np.pi, n))
+    z = np.linspace(0, 5, n)
+    position = np.column_stack([x - 5, y + 5, z])
+    sg.plot(position, color='xkcd:sky blue', linewidth=0.2)
+
+    # ---
     sg.mesh(vertices=[[10, -10, 0],
                       [10, 10, 0],
                       [10, 10, 5],

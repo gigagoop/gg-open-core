@@ -13,7 +13,7 @@ from moderngl_window.context.pyglet.window import PygletWrapper, Window
 from moderngl_window.integrations.imgui import ModernglWindowRenderer
 
 from gigagoop.coord import Transform
-from .nodes import Node, Grid, CFrame, Scatter, Plot, Mesh, Sphere
+from .nodes import Node, Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere
 from .camera import Camera
 
 log = logging.getLogger(__name__)
@@ -255,7 +255,17 @@ class Engine:
         if message_type == 'plot':
             position = np.array(request_json['position']).astype(np.float32)
             rgba = np.array(request_json['rgba']).astype(np.float32)
-            node = Plot(engine, position, rgba)
+            lines = bool(request_json.get('lines', False))
+            linewidth = request_json.get('linewidth')
+            if linewidth is None:
+                node = Plot(engine, position, rgba, lines)
+                self._add_node(node)
+                return
+
+            try:
+                node = ThickPlot(engine, position, rgba, lines, float(linewidth))
+            except ValueError:
+                node = Plot(engine, position, rgba, lines)
             self._add_node(node)
             return
 
