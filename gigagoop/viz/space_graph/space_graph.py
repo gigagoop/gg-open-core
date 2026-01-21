@@ -58,35 +58,13 @@ def check_position(position: ArrayLike) -> np.ndarray:
 
 
 def get_open_port():
+    # Bind to port 0 so the OS picks a free ephemeral port.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(('127.0.0.1', 0))
+        _, port = sock.getsockname()
 
-    def is_port_in_use(port, host='localhost'):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind((host, port))
-                return False
-            except socket.error as ex:
-                return True
-
-    # ------------------------------------------------------------------------------------------------------------------
-    # TODO - a serious issue is that pygame does not support multiple instances at the same time, so this actually works
-    #        fine for ZeroMQ, but fails in weird ways if we use multiple instances. For now, we will disable this, and
-    #        force a failure if multiple space graph instances are started
-    num_attempts = 100
-    open_port = None
-    for _ in range(num_attempts):
-        check_port = np.random.randint(low=49152, high=65535)
-        if not is_port_in_use(check_port):
-            open_port = check_port
-            break
-
-    assert open_port is not None, 'could not find an open port after 100 attempts'
-    log.debug(f'using port: {open_port}')
-    # ------------------------------------------------------------------------------------------------------------------
-    # open_port = 5555
-    # assert not is_port_in_use(open_port)
-    # ------------------------------------------------------------------------------------------------------------------
-
-    return open_port
+    log.debug(f'using port: {port}')
+    return port
 
 
 class SpaceGraph:
@@ -124,12 +102,27 @@ class SpaceGraph:
                  show_grid=True,
                  window_params: Optional[WindowParams] = None,
                  cam: Optional[PinholeCamera] = None,
+                 startup_timeout_s: Optional[float] = 5.0,
                  scale_wcs=1.0,
                  grid_size=10):
 
-        self._port = get_open_port()
-        self._start_server_non_blocking(window_params, cam)
-        self._setup_client()
+        self._startup_timeout_s = None if startup_timeout_s is None else float(startup_timeout_s)
+        max_attempts = 2
+        last_error = None
+        for attempt in range(max_attempts):
+            self._port = get_open_port()
+            self._start_server_non_blocking(window_params, cam)
+            try:
+                self._setup_client()
+                last_error = None
+                break
+            except TimeoutError as ex:
+                last_error = ex
+                if self._process.is_alive():
+                    self._process.terminate()
+                    self._process.join(timeout=1.0)
+        if last_error is not None:
+            raise last_error
 
         if show_wcs:
             self.add_cframe(scale=scale_wcs)
@@ -578,7 +571,7 @@ class SpaceGraph:
         self.plot(lines, lines=True, color=color, alpha=alpha)
 
     # ------------------------------------------------------------------------------------------------------------------
-    def _send_message(self, message):
+    def _send_message(self, message, timeout_s: Optional[float] = None):
         assert 'MessageType' in message
 
         # Serialize the message
@@ -593,7 +586,15 @@ class SpaceGraph:
             raise ex
 
         # Wait for a reply
-        data = self._socket.recv()
+        if timeout_s is None:
+            data = self._socket.recv()
+        else:
+            poller = zmq.Poller()
+            poller.register(self._socket, zmq.POLLIN)
+            events = dict(poller.poll(int(timeout_s * 1000)))
+            if events.get(self._socket) != zmq.POLLIN:
+                raise TimeoutError(f'no response from SpaceGraph server on port {self._port}')
+            data = self._socket.recv()
         recv_msg = pickle.loads(data)
         assert 'MessageType' in recv_msg and recv_msg['MessageType'] == 'Ack' and recv_msg['Success'] == True
 
@@ -602,11 +603,20 @@ class SpaceGraph:
     def _setup_client(self):
         self._context = zmq.Context()
         self._socket = self._context.socket(zmq.REQ)
+        self._socket.setsockopt(zmq.LINGER, 0)
 
-        self._socket.connect(f'tcp://localhost:{self._port}')
+        self._socket.connect(f'tcp://127.0.0.1:{self._port}')
 
         # Check if the server is up and running by first sending a message
-        self._send_message(message={'MessageType': 'IsAlive'})
+        try:
+            self._send_message(message={'MessageType': 'IsAlive'}, timeout_s=self._startup_timeout_s)
+        except TimeoutError as ex:
+            self._socket.close(0)
+            self._context.term()
+            if self._process.is_alive():
+                self._process.terminate()
+                self._process.join(timeout=1.0)
+            raise TimeoutError('SpaceGraph server did not respond during startup') from ex
 
     def _start_server_non_blocking(self,
                                    window_params: Optional[WindowParams] = None,
