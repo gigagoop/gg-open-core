@@ -75,7 +75,7 @@ def main():
     # ---
     x = np.cos(np.linspace(0, 4 * np.pi, n))
     y = np.sin(np.linspace(0, 4 * np.pi, n))
-    z = np.linspace(0, 2, n)
+    z = np.linspace(0, 5, n)
     position = np.column_stack([x - 5, y + 5, z])
     sg.plot(position, color='xkcd:sky blue', linewidth=0.2)
 
