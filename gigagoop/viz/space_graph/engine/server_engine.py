@@ -8,7 +8,7 @@ import zmq
 from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
-from ..nodes import Grid, CFrame, Scatter, Plot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh
+from ..nodes import Grid, CFrame, Scatter, Plot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh, Cylinder
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -133,9 +133,31 @@ class ServerEngine(BaseEngine):
         elif message_type == 'plot':
             position = np.array(request['position']).astype(np.float32)
             rgba = np.array(request['rgba']).astype(np.float32)
-            lines = request['lines']
-            node = Plot(engine, position, rgba, lines)
-            self.add_node(node)
+            lines = bool(request.get('lines', False))
+            linewidth = request.get('linewidth')
+
+            if linewidth is None:
+                node = Plot(engine, position, rgba, lines)
+                self.add_node(node)
+            else:
+                linewidth = float(linewidth)
+                radius = linewidth / 2.0
+                num_sides = 12
+
+                if lines:
+                    assert len(position) % 2 == 0
+                    indices = [(i, i + 1) for i in range(0, len(position), 2)]
+                else:
+                    indices = [(i, i + 1) for i in range(len(position) - 1)]
+
+                for i, j in indices:
+                    p0 = position[i]
+                    p1 = position[j]
+                    if np.allclose(p0, p1):
+                        continue
+                    color = 0.5 * (rgba[i] + rgba[j])
+                    node = Cylinder(engine, p0, p1, color=color, radius=radius, num_sides=num_sides)
+                    self.add_node(node)
 
         elif message_type == 'mesh':
             vertices = np.array(request['vertices']).astype(np.float32)

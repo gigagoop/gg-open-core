@@ -370,17 +370,26 @@ class SpaceGraph:
              position: ArrayLike,
              color: str | ArrayLike = 'white',
              alpha: float = 1.0,
-             lines: bool = False):
+             lines: bool = False,
+             linewidth: Optional[float] = None):
         """Create a line plot.
 
         When `lines=False`, then a "line-strip" is used, such that `position[0]` connects to `position[1], which then
         connects to `position[2]`, and so on. If you want a bunch of disconnected lines, then set `lines=True` which
         means `position[0] <---> position[1]` would be a line, `position[2] <---> position[3]` would be another line,
         and so on.
+
+        When `linewidth` is provided, line segments are rendered as thin cylinders with the requested width. This
+        provides a visible thickness compared to the default line-strip rendering.
         """
         position = check_position(position)
         rgba = get_vertex_rgba(position, color, alpha)
         lines = bool(lines)
+
+        if linewidth is not None:
+            linewidth = float(linewidth)
+            if linewidth <= 0:
+                raise ValueError('linewidth must be a positive number')
 
         if lines:
             assert len(position) % 2 == 0
@@ -388,7 +397,8 @@ class SpaceGraph:
         message = {'MessageType': 'plot',
                    'position': position,
                    'rgba': rgba,
-                   'lines': lines}
+                   'lines': lines,
+                   'linewidth': linewidth}
 
         self._send_message(message)
 
@@ -609,4 +619,3 @@ class SpaceGraph:
         self._process = Process(target=_start_engine,
                                 args=(self._port, window_params, cam))
         self._process.start()
-

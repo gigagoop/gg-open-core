@@ -13,7 +13,7 @@ from moderngl_window.context.pyglet.window import PygletWrapper, Window
 from moderngl_window.integrations.imgui import ModernglWindowRenderer
 
 from gigagoop.coord import Transform
-from .nodes import Node, Grid, CFrame, Scatter, Plot, Mesh, Sphere
+from .nodes import Node, Grid, CFrame, Scatter, Plot, Mesh, Sphere, Cylinder
 from .camera import Camera
 
 log = logging.getLogger(__name__)
@@ -255,8 +255,32 @@ class Engine:
         if message_type == 'plot':
             position = np.array(request_json['position']).astype(np.float32)
             rgba = np.array(request_json['rgba']).astype(np.float32)
-            node = Plot(engine, position, rgba)
-            self._add_node(node)
+            lines = bool(request_json.get('lines', False))
+            linewidth = request_json.get('linewidth')
+
+            if linewidth is None:
+                node = Plot(engine, position, rgba, lines)
+                self._add_node(node)
+                return
+
+            linewidth = float(linewidth)
+            radius = linewidth / 2.0
+            num_sides = 12
+
+            if lines:
+                assert len(position) % 2 == 0
+                indices = [(i, i + 1) for i in range(0, len(position), 2)]
+            else:
+                indices = [(i, i + 1) for i in range(len(position) - 1)]
+
+            for i, j in indices:
+                p0 = position[i]
+                p1 = position[j]
+                if np.allclose(p0, p1):
+                    continue
+                color = 0.5 * (rgba[i] + rgba[j])
+                node = Cylinder(engine, p0, p1, color=color, radius=radius, num_sides=num_sides)
+                self._add_node(node)
             return
 
         if message_type == 'mesh':
