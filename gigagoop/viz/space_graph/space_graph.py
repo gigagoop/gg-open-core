@@ -107,22 +107,15 @@ class SpaceGraph:
                  grid_size=10):
 
         self._startup_timeout_s = None if startup_timeout_s is None else float(startup_timeout_s)
-        max_attempts = 2
-        last_error = None
-        for attempt in range(max_attempts):
-            self._port = get_open_port()
-            self._start_server_non_blocking(window_params, cam)
-            try:
-                self._setup_client()
-                last_error = None
-                break
-            except TimeoutError as ex:
-                last_error = ex
-                if self._process.is_alive():
-                    self._process.terminate()
-                    self._process.join(timeout=1.0)
-        if last_error is not None:
-            raise last_error
+        self._port = get_open_port()
+        self._start_server_non_blocking(window_params, cam)
+        try:
+            self._setup_client()
+        except Exception:
+            if self._process.is_alive():
+                self._process.terminate()
+                self._process.join(timeout=1.0)
+            raise
 
         if show_wcs:
             self.add_cframe(scale=scale_wcs)
