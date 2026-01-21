@@ -25,10 +25,10 @@ class ServerEngine(BaseEngine):
         super().__init__(window_params, cam)
 
         # Setup ZeroMQ
-        self._zmq_port = port
+        self._zmq_port = int(port)
         self._zmq_context = zmq.Context()
         self._zmq_socket = self._zmq_context.socket(zmq.REP)
-        self._zmq_socket.bind(f'tcp://*:{port}')
+        self._zmq_socket.bind(f'tcp://127.0.0.1:{self._zmq_port}')
 
     def render_frame(self, current_time: float, delta_time: float):
         super().render_frame(current_time, delta_time)
