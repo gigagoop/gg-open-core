@@ -23,12 +23,43 @@ and it will happily plot a million points for you ;-P.
 We know, the documentation isn’t great (yet). This project is a work in progress, and we’re sharing it as-is for now. If you have questions or need help, feel free to open an issue or reach out! Contributions to improve the docs are welcome.
 
 # Installation
-You can run all the tools by installing a full environment with:
+If you want a clean, dedicated environment that matches this repo's dependencies, create the full env:
 ```
 conda env create -f environment.yml
 ```
 
-or instead, add those dependencies to your own environment.
+This is the easiest way to get everything working without thinking about versions.
+
+If you already have an environment you like, use the pip install options below. That lets you keep your existing env and just add `gg-open-core` on top.
+
+## Development setup
+If you're working on `gg-open-core` alongside another repo, an editable install is the least annoying way to keep everything in sync:
+```
+conda activate <your-env>
+cd ~/GitHub/gg-open-core
+pip install -e .
+```
+Now any edits to `gigagoop` show up immediately.
+
+If you just want to use the package (no live edits), install from a local path:
+```
+conda activate <your-env>
+pip install ~/GitHub/gg-open-core
+```
+This copies the package into the env. Changes in the repo will not be picked up unless you reinstall.
+
+If you want zero install overhead, you can point `PYTHONPATH` at the repo:
+```
+conda activate <your-env>
+export PYTHONPATH=~/GitHub/gg-open-core:$PYTHONPATH
+```
+This is quick and reversible, but the editable install is usually more reliable.
+
+Quick sanity check:
+```
+python -c "import gigagoop; print(gigagoop.__file__)"
+```
+You should see a path inside your repo for editable installs.
 
 # Getting Started
 Start by running [ex_overview.py](examples/space_graph/ex_overview.py) to get an idea of how to use `SpaceGraph` - you'll get something like this:
