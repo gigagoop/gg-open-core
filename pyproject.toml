@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gg-open-core"
-version = "0.0.0"
+version = "0.2.1"
 description = "Open-source subset of gg-core tools."
 license = {file = "LICENSE.txt"}
 dependencies = [
