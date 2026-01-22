@@ -106,6 +106,7 @@ class SpaceGraph:
                  scale_wcs=1.0,
                  grid_size=10):
 
+        self._closed = False
         self._startup_timeout_s = None if startup_timeout_s is None else float(startup_timeout_s)
         self._port = get_open_port()
         self._start_server_non_blocking(window_params, cam)
@@ -175,7 +176,10 @@ class SpaceGraph:
 
     def close(self):
         # TODO - trigger a clean termination, this is a hack...
-        self._process.terminate()
+        self._closed = True
+        self._shutdown_client()
+        if self._process.is_alive():
+            self._process.terminate()
 
     # ==================================================================================================================
     # ADD [GEOMETRY]
@@ -564,8 +568,36 @@ class SpaceGraph:
         self.plot(lines, lines=True, color=color, alpha=alpha)
 
     # ------------------------------------------------------------------------------------------------------------------
+    def _ensure_server_running(self):
+        if self._closed or self._socket is None:
+            raise RuntimeError('SpaceGraph client is closed.')
+
+        if not self._process.is_alive():
+            self._closed = True
+            self._shutdown_client()
+            raise RuntimeError('SpaceGraph server is not running; it may have been closed.')
+
+    def _shutdown_client(self):
+        socket = getattr(self, '_socket', None)
+        if socket is not None:
+            try:
+                socket.close(0)
+            except Exception:
+                pass
+            self._socket = None
+
+        context = getattr(self, '_context', None)
+        if context is not None:
+            try:
+                context.term()
+            except Exception:
+                pass
+            self._context = None
+
     def _send_message(self, message, timeout_s: Optional[float] = None):
         assert 'MessageType' in message
+
+        self._ensure_server_running()
 
         # Serialize the message
         data = pickle.dumps(message)
@@ -576,18 +608,33 @@ class SpaceGraph:
 
         except Exception as ex:
             log.error(f'error sending message with {ex=}')
-            raise ex
+            self._shutdown_client()
+            raise
 
         # Wait for a reply
-        if timeout_s is None:
-            data = self._socket.recv()
-        else:
-            poller = zmq.Poller()
-            poller.register(self._socket, zmq.POLLIN)
-            events = dict(poller.poll(int(timeout_s * 1000)))
-            if events.get(self._socket) != zmq.POLLIN:
-                raise TimeoutError(f'no response from SpaceGraph server on port {self._port}')
-            data = self._socket.recv()
+        poller = zmq.Poller()
+        poller.register(self._socket, zmq.POLLIN)
+        start_time = time.monotonic()
+        poll_interval_ms = 250
+        while True:
+            if timeout_s is None:
+                poll_ms = poll_interval_ms
+            else:
+                elapsed = time.monotonic() - start_time
+                remaining_s = timeout_s - elapsed
+                if remaining_s <= 0:
+                    raise TimeoutError(f'no response from SpaceGraph server on port {self._port}')
+                poll_ms = int(min(remaining_s, poll_interval_ms / 1000.0) * 1000)
+
+            events = dict(poller.poll(poll_ms))
+            if events.get(self._socket) == zmq.POLLIN:
+                data = self._socket.recv()
+                break
+
+            if not self._process.is_alive():
+                self._closed = True
+                self._shutdown_client()
+                raise RuntimeError('SpaceGraph server closed before responding.')
         recv_msg = pickle.loads(data)
         assert 'MessageType' in recv_msg and recv_msg['MessageType'] == 'Ack' and recv_msg['Success'] == True
 
@@ -604,8 +651,7 @@ class SpaceGraph:
         try:
             self._send_message(message={'MessageType': 'IsAlive'}, timeout_s=self._startup_timeout_s)
         except TimeoutError as ex:
-            self._socket.close(0)
-            self._context.term()
+            self._shutdown_client()
             if self._process.is_alive():
                 self._process.terminate()
                 self._process.join(timeout=1.0)
