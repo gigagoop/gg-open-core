@@ -421,8 +421,10 @@ class BaseEngine:
             new_v = max(step, self.camera.velocity - step)
 
         self.camera.velocity = int(round(new_v)) if coarse else new_v
-
-        self._imgui.mouse_scroll_event(x_offset, y_offset)
+        io = self._imgui.io
+        if hasattr(io, 'mouse_wheel_h'):
+            io.mouse_wheel_h = x_offset
+        io.mouse_wheel = y_offset
 
     def unicode_char_entered_event(self, char: str):
         self._imgui.unicode_char_entered(char)

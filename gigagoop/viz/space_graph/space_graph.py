@@ -5,7 +5,7 @@ import pickle
 import time
 from multiprocessing import Process
 from pathlib import Path
-from typing import Optional, overload, Dict
+from typing import Optional, overload, Dict, Sequence
 
 import numpy as np
 from matplotlib.colors import to_rgba
@@ -55,6 +55,140 @@ def check_position(position: ArrayLike) -> np.ndarray:
     assert k == 3
 
     return position
+
+
+def _normalize_direction(direction: ArrayLike) -> np.ndarray:
+    direction = np.array(direction, dtype=float).flatten()
+    assert len(direction) == 3
+    norm = np.linalg.norm(direction)
+    assert norm > np.finfo(float).eps
+    return direction / norm
+
+
+def _frame_from_forward_up(origin: ArrayLike,
+                           forward: ArrayLike,
+                           up: Optional[ArrayLike] = None) -> Transform:
+    origin = np.array(origin, dtype=float).flatten()
+    assert len(origin) == 3
+
+    forward = _normalize_direction(forward)
+
+    if up is None:
+        up = np.array([0.0, 0.0, 1.0], dtype=float)
+    else:
+        up = np.array(up, dtype=float).flatten()
+        assert len(up) == 3
+
+    if abs(np.dot(forward, up) / (np.linalg.norm(up) + 1e-12)) > 0.98:
+        if abs(forward[2]) < 0.9:
+            up = np.array([0.0, 0.0, 1.0], dtype=float)
+        else:
+            up = np.array([0.0, 1.0, 0.0], dtype=float)
+
+    up = up / (np.linalg.norm(up) + 1e-12)
+
+    # LHS basis: X forward, Y right, Z up
+    Y = np.cross(forward, -up)
+    if np.linalg.norm(Y) < np.finfo(float).eps:
+        fallback = np.array([1.0, 0.0, 0.0], dtype=float)
+        if abs(np.dot(forward, fallback)) > 0.9:
+            fallback = np.array([0.0, 1.0, 0.0], dtype=float)
+        Y = np.cross(forward, fallback)
+    Y = Y / (np.linalg.norm(Y) + 1e-12)
+    Z = np.cross(forward, Y)
+    Z = Z / (np.linalg.norm(Z) + 1e-12)
+
+    return Transform.from_rotation_and_origin(rotation=np.c_[forward, Y, Z], origin=origin)
+
+
+def _normalize_texts(text: str | Sequence[str], count: int) -> list[str]:
+    if isinstance(text, str):
+        if count == 1:
+            return [text]
+        return [text for _ in range(count)]
+
+    texts = list(text)
+    assert len(texts) == count
+    return [str(t) for t in texts]
+
+
+def _normalize_vectors(value: ArrayLike | Sequence[ArrayLike],
+                       count: int) -> np.ndarray:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, np.ndarray)):
+        if len(value) == 3 and np.array(value).ndim == 1:
+            vecs = np.tile(np.array(value, dtype=float).reshape(1, 3), (count, 1))
+        else:
+            vecs = np.array(value, dtype=float)
+    else:
+        vecs = np.array(value, dtype=float)
+
+    if vecs.ndim == 1:
+        assert len(vecs) == 3
+        vecs = np.tile(vecs.reshape(1, 3), (count, 1))
+
+    assert vecs.ndim == 2
+    assert vecs.shape[0] == count and vecs.shape[1] == 3
+    return vecs
+
+
+def _render_text_rgba(text: str,
+                      rgb: np.ndarray,
+                      font_scale: float,
+                      thickness: int,
+                      padding_px: int,
+                      line_spacing: float) -> np.ndarray:
+    try:
+        import cv2
+    except Exception as ex:
+        raise ImportError('SpaceGraph.text3d requires opencv-python (cv2).') from ex
+
+    lines = text.splitlines() or ['']
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    metrics = []
+    max_width = 0
+    total_height = 0
+
+    for line in lines:
+        (w, h), baseline = cv2.getTextSize(line, font, font_scale, thickness)
+        metrics.append((line, w, h, baseline))
+        max_width = max(max_width, w)
+        total_height += h + baseline
+
+    if len(lines) > 1:
+        for _, _, h, baseline in metrics[:-1]:
+            total_height += int((line_spacing - 1.0) * (h + baseline))
+
+    width = max_width + 2 * padding_px
+    height = total_height + 2 * padding_px
+
+    width = max(width, 1)
+    height = max(height, 1)
+
+    mask = np.zeros((height, width), dtype=np.uint8)
+
+    y = padding_px
+    for idx, (line, w, h, baseline) in enumerate(metrics):
+        baseline_y = y + h
+        cv2.putText(mask,
+                    line,
+                    (padding_px, baseline_y),
+                    font,
+                    font_scale,
+                    255,
+                    thickness,
+                    cv2.LINE_AA)
+        y += h + baseline
+        if idx < len(metrics) - 1:
+            y += int((line_spacing - 1.0) * (h + baseline))
+
+    mask_f = (mask.astype(np.float32) / 255.0).reshape(height, width, 1)
+    rgb_f = np.clip(rgb.reshape(1, 1, 3), 0.0, 1.0)
+    rgb_img = np.broadcast_to((rgb_f * 255.0).astype(np.uint8), (height, width, 3)).copy()
+    alpha_img = (mask_f * 255.0).astype(np.uint8)
+
+    rgba = np.concatenate([rgb_img, alpha_img], axis=2)
+    return rgba
 
 
 def get_open_port():
@@ -432,6 +566,73 @@ class SpaceGraph:
                    'clip': bool(clip)}
 
         self._send_message(message)
+
+    def text3d(self,
+               position: ArrayLike,
+               text: str | Sequence[str],
+               normal: ArrayLike = (1.0, 0.0, 0.0),
+               up: Optional[ArrayLike] = None,
+               height: float | Sequence[float] = 0.5,
+               color: str | ArrayLike = 'white',
+               alpha: float = 1.0,
+               font_scale: float = 1.0,
+               thickness: int = 2,
+               padding_px: int = 4,
+               line_spacing: float = 1.0):
+        """Render 3D text quads that face a fixed direction."""
+        position = check_position(position)
+        texts = _normalize_texts(text, len(position))
+        normals = _normalize_vectors(normal, len(position))
+
+        if up is None:
+            ups = None
+        else:
+            ups = _normalize_vectors(up, len(position))
+
+        rgba = get_vertex_rgba(position, color, alpha)
+
+        heights = np.array(height, dtype=float)
+        if heights.ndim == 0:
+            heights = np.full(len(position), float(heights))
+        elif heights.ndim == 1:
+            assert len(heights) == len(position)
+        else:
+            raise ValueError('height must be a scalar or a 1D array')
+
+        for idx, (pos, text_str, normal_vec, rgba_i, height_i) in enumerate(
+                zip(position, texts, normals, rgba, heights)):
+            if text_str is None:
+                continue
+
+            if height_i <= 0:
+                raise ValueError('height must be positive')
+
+            rgb = np.array(rgba_i[:3], dtype=float)
+            alpha_i = float(rgba_i[3])
+            image = _render_text_rgba(text_str,
+                                      rgb,
+                                      font_scale=float(font_scale),
+                                      thickness=int(thickness),
+                                      padding_px=int(padding_px),
+                                      line_spacing=float(line_spacing))
+
+            h_px, w_px, _ = image.shape
+            if h_px <= 0 or w_px <= 0:
+                continue
+
+            width_i = float(height_i) * (float(w_px) / float(h_px))
+
+            up_vec = None if ups is None else ups[idx]
+            M_OBJ_WCS = _frame_from_forward_up(pos, normal_vec, up_vec)
+
+            message = {'MessageType': 'text3d',
+                       'M_OBJ_WCS': M_OBJ_WCS.matrix,
+                       'image': image,
+                       'width': width_i,
+                       'height': float(height_i),
+                       'alpha': alpha_i}
+
+            self._send_message(message)
 
     @overload
     def mesh(self,

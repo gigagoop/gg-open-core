@@ -94,6 +94,17 @@ def main():
     sg.add_sphere(origin=[5, 0, 2])
 
     # ---
+    sg.add_sphere(origin=[-2, -2, 1], color='xkcd:light orange', size=0.8)
+    sg.text3d([-2, -2, 2.1],
+              '3D text',
+              normal=[1, 0.2, 0],
+              up=[0, 0, 1],
+              height=0.5,
+              color='xkcd:light gray',
+              font_scale=1.0,
+              thickness=2)
+
+    # ---
     image = skimage.data.chelsea()
 
     height, width, _ = image.shape

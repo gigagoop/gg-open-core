@@ -8,7 +8,7 @@ import zmq
 from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
-from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh, Text
+from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh, Text, Text3D
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -186,6 +186,15 @@ class ServerEngine(BaseEngine):
                         halign=halign,
                         valign=valign,
                         clip=clip)
+            self.add_node(node)
+
+        elif message_type == 'text3d':
+            M_OBJ_WCS = Transform(request['M_OBJ_WCS'])
+            image = request['image']
+            width = float(request['width'])
+            height = float(request['height'])
+            alpha = float(request.get('alpha', 1.0))
+            node = Text3D(engine, M_OBJ_WCS, image, width, height, alpha=alpha)
             self.add_node(node)
 
         else:
