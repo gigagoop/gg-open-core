@@ -517,7 +517,8 @@ class SpaceGraph:
                   mesh_color: str = 'white',
                   mesh_alpha: float = 0.5,
                   edge_color: str = 'white',
-                  edge_alpha: float = 1.0):
+                  edge_alpha: float = 1.0,
+                  linewidth: Optional[float] = None):
 
         vertices = check_position(vertices)
 
@@ -542,7 +543,7 @@ class SpaceGraph:
                                    for start, end in unique_edges])
         edges_as_lines = edges_as_lines.reshape(-1, 3)
 
-        self.plot(edges_as_lines, lines=True, color=edge_color, alpha=edge_alpha)
+        self.plot(edges_as_lines, lines=True, color=edge_color, alpha=edge_alpha, linewidth=linewidth)
 
     def vectors(self,
                 vectors: ArrayLike,
