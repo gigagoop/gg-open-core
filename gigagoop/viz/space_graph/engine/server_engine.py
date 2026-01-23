@@ -8,7 +8,7 @@ import zmq
 from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
-from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh
+from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh, Text
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -164,6 +164,28 @@ class ServerEngine(BaseEngine):
                            light_intensity=float(request['light_intensity']),
                            ambient_light=np.array(request['ambient_light']).astype(np.float32))
 
+            self.add_node(node)
+
+        elif message_type == 'text':
+            position = np.array(request['position']).astype(np.float32)
+            text = request['text']
+            rgba = np.array(request['rgba']).astype(np.float32)
+            size = float(request.get('size', 1.0))
+            offset_px = np.array(request.get('offset_px', [0.0, 0.0])).astype(np.float32)
+            halign = request.get('halign', 'center')
+            valign = request.get('valign', 'center')
+            clip = bool(request.get('clip', True))
+
+            node = Text(engine,
+                        position=position,
+                        text=text,
+                        color=rgba,
+                        alpha=None,
+                        size=size,
+                        offset_px=offset_px,
+                        halign=halign,
+                        valign=valign,
+                        clip=clip)
             self.add_node(node)
 
         else:

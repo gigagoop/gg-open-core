@@ -389,6 +389,50 @@ class SpaceGraph:
 
         self._send_message(message)
 
+    def text(self,
+             position: ArrayLike,
+             text: str | list[str],
+             color: str | ArrayLike = 'white',
+             alpha: float = 1.0,
+             size: float = 1.0,
+             offset_px: ArrayLike = (0.0, 0.0),
+             halign: str = 'center',
+             valign: str = 'center',
+             clip: bool = True):
+        """Render text labels anchored to 3D positions.
+
+        Notes
+        -----
+        The `size` parameter is a scale multiplier on the default UI font.
+        """
+        position = check_position(position)
+
+        if isinstance(text, str):
+            texts = [text for _ in range(len(position))]
+        else:
+            texts = list(text)
+            if len(texts) == 1 and len(position) > 1:
+                texts = texts * len(position)
+            else:
+                assert len(texts) == len(position)
+
+        rgba = get_vertex_rgba(position, color, alpha)
+
+        offset_px = np.array(offset_px, dtype=np.float32).flatten()
+        assert len(offset_px) == 2
+
+        message = {'MessageType': 'text',
+                   'position': position,
+                   'text': texts,
+                   'rgba': rgba,
+                   'size': float(size),
+                   'offset_px': offset_px,
+                   'halign': str(halign),
+                   'valign': str(valign),
+                   'clip': bool(clip)}
+
+        self._send_message(message)
+
     @overload
     def mesh(self,
              vertices: ArrayLike,

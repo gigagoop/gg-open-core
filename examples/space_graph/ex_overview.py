@@ -58,6 +58,12 @@ def main():
 
     # ---
     sg.scatter(np.random.randn(1000, 3) + [5, 5, 0], color='xkcd:pinkish', size=5)
+    sg.text([5, 5, 0.5],
+            'scatter cloud',
+            color='xkcd:white',
+            size=1.0,
+            offset_px=(0, -10),
+            valign='bottom')
 
     # ---
     n = 100
@@ -99,6 +105,13 @@ def main():
                        target=[5, 0, 0])
     sg.add_image(image, width, height, M_OBJ_WCS, alpha=0.8)
     sg.add_cframe(M_OBJ_WCS)
+    sg.text([-3, -1, 5],
+            'image plane',
+            color='xkcd:gold',
+            size=0.9,
+            offset_px=(8, 8),
+            halign='left',
+            valign='top')
 
     # ---
     origin = np.array([[0, -5, 0],

@@ -326,6 +326,12 @@ class Engine:
         self._imgui.mouse_drag_event(x, y, dx, dy)
 
     def _mouse_scroll_event(self, x_offset: int, y_offset: int):
+        io = imgui.get_io()
+        if not hasattr(io, 'mouse_wheel_h'):
+            try:
+                setattr(io, 'mouse_wheel_h', 0.0)
+            except Exception:
+                pass
         if y_offset > 0:
             # Speed up the movement
             self.camera.velocity += 1

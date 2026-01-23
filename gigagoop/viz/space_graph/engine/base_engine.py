@@ -210,6 +210,27 @@ class BaseEngine:
         imgui.new_frame()
 
         # ==============================================================================================================
+        # TEXT OVERLAY
+        # ==============================================================================================================
+        if any(callable(getattr(node, 'render_ui', None)) for node in self._scene):
+            imgui.set_next_window_position(0, 0)
+            imgui.set_next_window_size(self.screen.width, self.screen.height)
+            flags = (imgui.WINDOW_NO_TITLE_BAR |
+                     imgui.WINDOW_NO_RESIZE |
+                     imgui.WINDOW_NO_MOVE |
+                     imgui.WINDOW_NO_SCROLLBAR |
+                     imgui.WINDOW_NO_SAVED_SETTINGS |
+                     imgui.WINDOW_NO_INPUTS |
+                     imgui.WINDOW_NO_BACKGROUND)
+            imgui.begin('##sg_overlay', False, flags)
+            draw_list = imgui.get_window_draw_list()
+            for node in self._scene:
+                render_ui = getattr(node, 'render_ui', None)
+                if callable(render_ui):
+                    render_ui(draw_list, self.screen.width, self.screen.height)
+            imgui.end()
+
+        # ==============================================================================================================
         # STATS
         # ==============================================================================================================
         imgui.begin('Stats', closable=True)
@@ -383,6 +404,12 @@ class BaseEngine:
         On scroll: choose a coarse step of 1.0 when velocity > 1.0,
         otherwise a fine step of 0.01.  Round to int only in the coarse region.
         """
+        io = imgui.get_io()
+        if not hasattr(io, 'mouse_wheel_h'):
+            try:
+                setattr(io, 'mouse_wheel_h', 0.0)
+            except Exception:
+                pass
         # Choose step: coarse int steps above 1.0, fine-grained below
         coarse = self.camera.velocity > 1.0
         step = 1.0 if coarse else 0.1

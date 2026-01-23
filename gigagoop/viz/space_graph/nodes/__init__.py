@@ -14,3 +14,4 @@ from .cylinder import Cylinder
 from .camera import Camera
 from .arrow import Arrow
 from .lit_mesh import LitMesh
+from .text import Text
