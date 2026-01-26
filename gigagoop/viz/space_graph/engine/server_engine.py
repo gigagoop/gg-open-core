@@ -9,6 +9,7 @@ from gigagoop.coord import Transform
 from gigagoop.camera import PinholeCamera
 
 from ..nodes import Grid, CFrame, Scatter, Plot, ThickPlot, Mesh, Sphere, Image, UnrealMesh, Arrow, LitMesh, Text, Text3D
+from ..primitives import builder
 from ..params import WindowParams
 
 log = logging.getLogger(__name__)
@@ -113,6 +114,18 @@ class ServerEngine(BaseEngine):
             M_OBJ_WCS = Transform(request['M_OBJ_WCS'])
             rgba = np.array(request['rgba']).astype(np.float32)
             node = Sphere(engine, M_OBJ_WCS, rgba, scale=request['size'])
+            self.add_node(node)
+
+        elif message_type == 'add_spheres':
+            origins = np.array(request['origin']).astype(np.float32)
+            rgba = np.array(request['rgba']).astype(np.float32)
+            size = float(request['size'])
+
+            vertices, faces, face_rgba = builder.build_spheres_mesh(origins=origins, rgba=rgba, scale=size)
+            node = Mesh(engine,
+                        vertices=vertices.astype(np.float32),
+                        faces=faces.astype(np.int32),
+                        rgba=face_rgba.astype(np.float32))
             self.add_node(node)
 
         elif message_type == 'add_arrow':

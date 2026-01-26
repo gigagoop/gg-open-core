@@ -94,6 +94,16 @@ def main():
     sg.add_sphere(origin=[5, 0, 2])
 
     # ---
+    origins = np.random.randn(100, 3) * 0.25 + [-5, -5, 1.5]
+    sg.add_sphere(origin=origins, color='xkcd:acid green', size=0.15, alpha=0.8)
+    sg.text([-5, -5, 2.3],
+            'batched spheres',
+            color='xkcd:white',
+            size=0.9,
+            offset_px=(0, -10),
+            valign='bottom')
+
+    # ---
     sg.add_sphere(origin=[-2, -2, 1], color='xkcd:light orange', size=0.8)
     sg.text3d([-2, -2, 2.1],
               '3D text',

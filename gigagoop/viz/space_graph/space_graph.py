@@ -387,16 +387,29 @@ class SpaceGraph:
         if origin is None:
             origin = np.zeros(3)
 
-        origin = np.array(origin).flatten()
-        assert len(origin) == 3
-        x, y, z = origin
-
-        M_OBJ_WCS = Translate(x, y, z)
-
         rgba = to_rgba(color, alpha)
 
-        message = {'MessageType': 'add_sphere',
-                   'M_OBJ_WCS': M_OBJ_WCS.matrix,
+        origin = np.array(origin)
+        if origin.ndim == 1:
+            origin = origin.flatten()
+            assert len(origin) == 3
+            x, y, z = origin
+
+            M_OBJ_WCS = Translate(x, y, z)
+
+            message = {'MessageType': 'add_sphere',
+                       'M_OBJ_WCS': M_OBJ_WCS.matrix,
+                       'rgba': np.array(rgba),
+                       'size': size}
+            self._send_message(message)
+            return
+
+        assert origin.ndim == 2 and origin.shape[1] == 3
+        if origin.shape[0] == 0:
+            return
+
+        message = {'MessageType': 'add_spheres',
+                   'origin': origin.astype(np.float32),
                    'rgba': np.array(rgba),
                    'size': size}
 

@@ -1,4 +1,5 @@
 import logging
+from functools import lru_cache
 from pathlib import Path
 import codecs
 from typing import Tuple, Optional, Dict
@@ -435,13 +436,67 @@ def build_cframe_mesh(M_CFRAME_WCS: Transform,
 
 
 def build_sphere_mesh(M_CFRAME_WCS: Transform, rgba: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    sphere_mesh = UnrealMesh(__obj_dir__ / 'sphere.obj')
+    sphere_vertices_template, sphere_faces = _get_sphere_template()
 
     # The sphere color is assumed to be uniform, which means...
+    rgba = np.array(rgba).flatten()
     assert len(rgba) == 4
 
-    sphere_vertices = M_CFRAME_WCS(sphere_mesh.vertices)
-    sphere_faces = np.array(sphere_mesh.faces)
+    sphere_vertices = M_CFRAME_WCS(sphere_vertices_template)
     sphere_rgba = get_vertex_rgba(sphere_faces, rgba)
 
     return sphere_vertices, sphere_faces, sphere_rgba
+
+
+@lru_cache(maxsize=8)
+def _load_unreal_mesh_geometry(obj_file: str) -> Tuple[np.ndarray, np.ndarray]:
+    mesh = UnrealMesh(Path(obj_file))
+    vertices = np.array(mesh.vertices, dtype=np.float32)
+    faces = np.array(mesh.faces, dtype=np.int32)
+    return vertices, faces
+
+
+def _get_sphere_template() -> Tuple[np.ndarray, np.ndarray]:
+    obj_file = str(__obj_dir__ / 'sphere.obj')
+    return _load_unreal_mesh_geometry(obj_file)
+
+
+def build_spheres_mesh(origins: NDArray[np.floating],
+                       rgba: np.ndarray,
+                       scale: float = 1.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build a single merged mesh containing many translated+scaled spheres.
+
+    This is much faster than constructing individual Sphere nodes for each origin.
+    """
+    origins = np.array(origins, dtype=np.float32)
+    if origins.ndim == 1:
+        assert len(origins) == 3
+        origins = np.atleast_2d(origins)
+
+    assert origins.ndim == 2 and origins.shape[1] == 3
+
+    n_spheres = origins.shape[0]
+    if n_spheres == 0:
+        empty_vertices = np.zeros((0, 3), dtype=np.float32)
+        empty_faces = np.zeros((0, 3), dtype=np.int32)
+        empty_rgba = np.zeros((0, 4), dtype=np.float32)
+        return empty_vertices, empty_faces, empty_rgba
+
+    scale = float(scale)
+
+    sphere_vertices_template, sphere_faces_template = _get_sphere_template()
+    num_verts = sphere_vertices_template.shape[0]
+    num_faces = sphere_faces_template.shape[0]
+
+    vertices = sphere_vertices_template[None, :, :] * np.float32(scale) + origins[:, None, :]
+    vertices = vertices.reshape(n_spheres * num_verts, 3)
+
+    offsets = (np.arange(n_spheres, dtype=np.int32) * num_verts)[:, None, None]
+    faces = sphere_faces_template[None, :, :] + offsets
+    faces = faces.reshape(n_spheres * num_faces, 3)
+
+    rgba = np.array(rgba, dtype=np.float32).flatten()
+    assert len(rgba) == 4
+    face_rgba = np.tile(rgba[None, :], (n_spheres * num_faces, 1))
+
+    return vertices, faces, face_rgba
