@@ -236,7 +236,7 @@ class SpaceGraph:
                  show_grid=True,
                  window_params: Optional[WindowParams] = None,
                  cam: Optional[PinholeCamera] = None,
-                 startup_timeout_s: Optional[float] = 5.0,
+                 startup_timeout_s: Optional[float] = 10.0,
                  scale_wcs=1.0,
                  grid_size=10):
 
@@ -425,10 +425,23 @@ class SpaceGraph:
         origin = check_position(origin)
         direction = check_position(direction)
         width = float(width)
+
+        n_origins = origin.shape[0]
+        n_directions = direction.shape[0]
+        if n_origins != n_directions:
+            if n_origins == 1:
+                origin = np.tile(origin, (n_directions, 1))
+            elif n_directions == 1:
+                direction = np.tile(direction, (n_origins, 1))
+            else:
+                assert False, '`origin` and `direction` must have matching rows or broadcast from a single vector'
+
         rgba = get_vertex_rgba(origin, color, alpha)
 
         assert origin.shape == direction.shape
         assert width > np.finfo(np.float32).eps
+        if origin.shape[0] == 0:
+            return
 
         lens = np.linalg.norm(direction, axis=1)
         assert np.max(lens) > np.finfo(np.float32).eps, 'direction vectors should have a direction ;-P'

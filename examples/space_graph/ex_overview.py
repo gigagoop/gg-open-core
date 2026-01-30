@@ -150,6 +150,22 @@ def main():
                  color=['xkcd:magenta', 'xkcd:teal', 'xkcd:orange', 'xkcd:cerulean'])
 
     # ---
+    origin = np.array([2, -5, 0])
+    directions = np.random.randn(20, 3) * 0.8
+    directions[:, 2] *= 0.5
+    sg.add_arrow(origin=origin,
+                 direction=directions,
+                 width=0.2,
+                 color='xkcd:bright green',
+                 alpha=0.8)
+    sg.text([2, -5, 1.4],
+            'batched arrows',
+            color='xkcd:white',
+            size=0.9,
+            offset_px=(0, -10),
+            valign='bottom')
+
+    # ---
     verts, faces, normals = generate_torus()
     sg.lit_mesh(verts + [5, 0, 1], faces, normals)
 
