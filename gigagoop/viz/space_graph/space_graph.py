@@ -57,6 +57,24 @@ def check_position(position: ArrayLike) -> np.ndarray:
     return position
 
 
+def _normalize_triangles(vertices: ArrayLike) -> np.ndarray:
+    triangles = np.array(vertices, dtype=float)
+
+    if triangles.ndim == 2:
+        assert triangles.shape[1] == 3
+        if triangles.shape[0] == 3:
+            triangles = triangles.reshape(1, 3, 3)
+        else:
+            assert triangles.shape[0] % 3 == 0
+            triangles = triangles.reshape(-1, 3, 3)
+    elif triangles.ndim == 3:
+        assert triangles.shape[1:] == (3, 3)
+    else:
+        raise ValueError('vertices should have shape [3, 3], [n*3, 3], or [n, 3, 3]')
+
+    return triangles
+
+
 def _normalize_direction(direction: ArrayLike) -> np.ndarray:
     direction = np.array(direction, dtype=float).flatten()
     assert len(direction) == 3
@@ -659,6 +677,100 @@ class SpaceGraph:
                        'alpha': alpha_i}
 
             self._send_message(message)
+
+    def add_tri(self,
+                vertices: ArrayLike,
+                width: float | Sequence[float] = 0.0,
+                color: str | ArrayLike = 'white',
+                alpha: float = 1.0):
+        """Add one or more triangles with optional thickness.
+
+        The `vertices` can be provided as:
+            - [3, 3] for a single triangle,
+            - [n*3, 3] for stacked triangles,
+            - [n, 3, 3] for a batch of triangles.
+
+        The `width` controls extrusion along the triangle normal. It can be a scalar or a length-n array.
+        """
+        triangles = _normalize_triangles(vertices)
+        num_tris = len(triangles)
+        if num_tris == 0:
+            return
+
+        widths = np.array(width, dtype=float)
+        if widths.ndim == 0:
+            widths = np.full(num_tris, float(widths))
+        elif widths.ndim == 1:
+            assert len(widths) == num_tris
+        else:
+            raise ValueError('width must be a scalar or 1D array')
+
+        if np.any(widths < 0):
+            raise ValueError('width must be non-negative')
+
+        centroids = np.mean(triangles, axis=1)
+        tri_rgba = get_vertex_rgba(centroids, color, alpha)
+
+        vertices_out = []
+        faces_out = []
+        rgba_out = []
+        vert_offset = 0
+        eps = np.finfo(float).eps
+
+        for tri, w, rgba_i in zip(triangles, widths, tri_rgba):
+            if w <= eps:
+                vertices_out.extend(tri)
+                faces_out.append([vert_offset, vert_offset + 1, vert_offset + 2])
+                rgba_out.append(rgba_i)
+                vert_offset += 3
+                continue
+
+            a, b, c = tri
+            normal = np.cross(b - a, c - a)
+            norm = np.linalg.norm(normal)
+            assert norm > eps, 'triangle normal is ill-defined (degenerate triangle)'
+            normal = normal / norm
+            half = 0.5 * w
+
+            a_t = a + normal * half
+            b_t = b + normal * half
+            c_t = c + normal * half
+            a_b = a - normal * half
+            b_b = b - normal * half
+            c_b = c - normal * half
+
+            vertices_out.extend([a_t, b_t, c_t, a_b, b_b, c_b])
+
+            a_ti = vert_offset
+            b_ti = vert_offset + 1
+            c_ti = vert_offset + 2
+            a_bi = vert_offset + 3
+            b_bi = vert_offset + 4
+            c_bi = vert_offset + 5
+
+            faces_out.extend([
+                [a_ti, b_ti, c_ti],  # top
+                [a_bi, c_bi, b_bi],  # bottom (reversed)
+                [a_ti, b_ti, b_bi],
+                [a_ti, b_bi, a_bi],
+                [b_ti, c_ti, c_bi],
+                [b_ti, c_bi, b_bi],
+                [c_ti, a_ti, a_bi],
+                [c_ti, a_bi, c_bi],
+            ])
+            rgba_out.extend([rgba_i] * 8)
+            vert_offset += 6
+
+        vertices_out = np.array(vertices_out, dtype=float)
+        faces_out = np.array(faces_out, dtype=int)
+        rgba_out = np.array(rgba_out, dtype=float)
+
+        message = {'MessageType': 'mesh',
+                   'vertices': vertices_out,
+                   'faces': faces_out,
+                   'rgba': rgba_out}
+
+        self._send_message(message)
 
     @overload
     def mesh(self,

@@ -91,6 +91,28 @@ def main():
                    [0, 1, 1, 0.5]])
 
     # ---
+    plane = np.array([[-8, -2, 0],
+                      [-4, -2, 0],
+                      [-4, 2, 0],
+                      [-8, 2, 0]], dtype=float)
+    sg.mesh(vertices=plane,
+            faces=[[0, 1, 2],
+                   [0, 2, 3]],
+            color='xkcd:charcoal',
+            alpha=0.25)
+
+    tris = np.array([[[-7.7, -1.0, 0],
+                      [-4.6, -1.0, 0],
+                      [-6.1, 1.6, 0]],
+                     [[-7.0, -0.6, 0],
+                      [-5.3, -0.6, 0],
+                      [-6.1, 0.8, 0]]], dtype=float)
+    sg.add_tri(tris,
+               width=[0.04, 0.12],
+               color=['xkcd:orange', 'xkcd:green'],
+               alpha=0.9)
+
+    # ---
     sg.add_sphere(origin=[5, 0, 2])
 
     # ---
