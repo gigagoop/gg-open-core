@@ -25,6 +25,46 @@ log = logging.getLogger(__name__)
 
 
 class BaseEngine:
+    @staticmethod
+    def _create_window(window_cls, window_params: WindowParams):
+        base_kwargs = dict(title=window_params.title,
+                           size=(window_params.width, window_params.height),
+                           fullscreen=False,
+                           resizable=True,
+                           gl_version=(3, 3),
+                           aspect_ratio=window_params.aspect_ratio,
+                           vsync=True,
+                           cursor=True)
+
+        attempted_samples = [8, 4, 0, None]
+        last_error = None
+
+        for samples in attempted_samples:
+            kwargs = dict(base_kwargs)
+            sample_label = 'default' if samples is None else str(samples)
+            if samples is not None:
+                kwargs['samples'] = samples
+
+            try:
+                if samples != 8:
+                    log.warning('falling back to OpenGL 3.3 window creation with samples=%s', sample_label)
+                return window_cls(**kwargs)
+            except Exception as ex:
+                if ex.__class__.__name__ not in {'NoSuchConfigException', 'NoSuchDisplayException'}:
+                    raise
+
+                last_error = ex
+                log.warning('failed to create OpenGL 3.3 window with samples=%s: %s', sample_label, ex)
+
+                if ex.__class__.__name__ == 'NoSuchDisplayException':
+                    break
+
+        raise RuntimeError(
+            'SpaceGraph could not create an OpenGL 3.3 window. '
+            'This usually means the Linux display/driver stack does not expose a compatible X11/GLX config '
+            '(common causes: missing DISPLAY/XWayland, software rendering, or no multisampled framebuffer support).'
+        ) from last_error
+
     def __init__(self,
                  window_params: Optional[WindowParams] = None,
                  cam: Optional[PinholeCamera] = None,
@@ -52,15 +92,7 @@ class BaseEngine:
         window_cls = mglw.get_window_cls(window='moderngl_window.context.pyglet.Window')
 
         # Instantiate the window class, creating a `class BaseWindow`
-        window = window_cls(title=window_params.title,
-                            size=(window_params.width, window_params.height),
-                            fullscreen=False,
-                            resizable=True,
-                            gl_version=(3, 3),
-                            aspect_ratio=window_params.aspect_ratio,
-                            vsync=True,
-                            samples=8,
-                            cursor=True)
+        window = self._create_window(window_cls, window_params)
 
         window.ctx.clear(*self._background_color)
 
