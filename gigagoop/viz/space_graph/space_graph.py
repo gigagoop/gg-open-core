@@ -25,13 +25,14 @@ log = logging.getLogger(__name__)
 
 def _start_engine(port: int,
                   window_params: Optional[WindowParams] = None,
-                  cam: Optional[PinholeCamera] = None):
+                  cam: Optional[PinholeCamera] = None,
+                  background_color: str = 'black'):
     from .engine import ServerEngine
 
     logging.basicConfig(level=logging.INFO)
     logging.getLogger('moderngl_window').setLevel(logging.WARNING)
 
-    engine = ServerEngine(port, window_params, cam)
+    engine = ServerEngine(port, window_params, cam, background_color=background_color)
     engine.run()
 
 
@@ -256,12 +257,13 @@ class SpaceGraph:
                  cam: Optional[PinholeCamera] = None,
                  startup_timeout_s: Optional[float] = 10.0,
                  scale_wcs=1.0,
-                 grid_size=10):
+                 grid_size=10,
+                 background_color: str = 'black'):
 
         self._closed = False
         self._startup_timeout_s = None if startup_timeout_s is None else float(startup_timeout_s)
         self._port = get_open_port()
-        self._start_server_non_blocking(window_params, cam)
+        self._start_server_non_blocking(window_params, cam, background_color=background_color)
         try:
             self._setup_client()
         except Exception:
@@ -1043,9 +1045,10 @@ class SpaceGraph:
 
     def _start_server_non_blocking(self,
                                    window_params: Optional[WindowParams] = None,
-                                   cam: Optional[PinholeCamera] = None):
+                                   cam: Optional[PinholeCamera] = None,
+                                   background_color: str = 'black'):
 
         # The `Engine` is a ZeroMQ server that accepts messages (requests) - this gets started up in a non-blocking way
         self._process = Process(target=_start_engine,
-                                args=(self._port, window_params, cam))
+                                args=(self._port, window_params, cam, background_color))
         self._process.start()

@@ -21,9 +21,10 @@ class ServerEngine(BaseEngine):
     def __init__(self,
                  port: int,
                  window_params: Optional[WindowParams] = None,
-                 cam: Optional[PinholeCamera] = None):
+                 cam: Optional[PinholeCamera] = None,
+                 background_color: str = 'black'):
 
-        super().__init__(window_params, cam)
+        super().__init__(window_params, cam, background_color=background_color)
 
         # Setup ZeroMQ
         self._zmq_port = int(port)
